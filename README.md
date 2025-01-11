@@ -26,6 +26,13 @@ python manage.py migrate
 python manage.py runserver
 
 Примеры запросов:
-GET http://127.0.0.1:8000/api/v1/follow/ - получение списка подписок
+GET http://127.0.0.1:8000/api/v1/follow/ 
+При успешном запросе в ответ пользователь получит список своих подписок в формате JSON:
+{
+"user": "string",
+"following": "string"
+}
 POST http://127.0.0.1:8000/api/v1/posts/ - создание публикации
 POST http://127.0.0.1:8000/api/v1/posts/{post_id}/comments/{id}/ - обновление комментария
+
+В ответ вернется

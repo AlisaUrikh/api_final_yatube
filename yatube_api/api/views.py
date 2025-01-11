@@ -1,47 +1,26 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, permissions, status, viewsets
-from rest_framework.exceptions import PermissionDenied
+from rest_framework import filters, mixins, permissions, viewsets
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.response import Response
 
-from api.permissions import ReadOnly
+from api.permissions import AuthorOrReadOnly
 from api.serializers import (
     CommentSerializer, FollowSerializer, GroupSerializer, PostSerializer)
-from posts.models import Comment, Follow, Group, Post
+from posts.models import Comment, Group, Post
 
 
-class BaseAuthorCheckViewSet(viewsets.ModelViewSet):
-    """Базовый вьюсет с проверкой авторства."""
-
-    def perform_update(self, serializer):
-        """Проверка авторства перед обновлением."""
-        if serializer.instance.author != self.request.user:
-            raise PermissionDenied('Изменение чужого объекта запрещено!')
-        super().perform_update(serializer)
-
-    def perform_destroy(self, instance):
-        """Проверка авторства перед удалением."""
-        if instance.author != self.request.user:
-            raise PermissionDenied('Удаление чужого объекта запрещено!')
-        instance.delete()
-
-
-class PostViewSet(BaseAuthorCheckViewSet):
+class PostViewSet(viewsets.ModelViewSet):
     """Вьюсет для модели Post."""
 
     queryset = Post.objects.all()
     serializer_class = PostSerializer
     pagination_class = LimitOffsetPagination
-
-    def get_permissions(self):
-        if self.action == 'retrieve':
-            return (ReadOnly(),)
-        return super().get_permissions()
+    permission_classes = (
+        permissions.IsAuthenticatedOrReadOnly, AuthorOrReadOnly,
+    )
 
     def perform_create(self, serializer):
         """Создание и сохранение поста в БД."""
         serializer.save(author=self.request.user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
@@ -49,36 +28,35 @@ class GroupViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    permission_classes = (permissions.AllowAny,)
 
 
-class CommentViewSet(BaseAuthorCheckViewSet):
+class CommentViewSet(viewsets.ModelViewSet):
     """Вьюсет для модели Comment."""
 
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
+    permission_classes = (
+        permissions.IsAuthenticatedOrReadOnly, AuthorOrReadOnly,
+    )
 
-    def get_permissions(self):
-        if self.action == 'retrieve':
-            return (ReadOnly(),)
-        return super().get_permissions()
+    def get_post(self):
+        return get_object_or_404(Post, pk=self.kwargs.get('post_id'))
 
     def get_queryset(self):
         """Получение всех комментариев объекта модели Post."""
-        post = get_object_or_404(Post, pk=self.kwargs.get('post_id'))
-        return post.comments.all()
+        return self.get_post().comments.all()
 
     def perform_create(self, serializer):
         """Создание и сохранение комментария в БД."""
-        post = get_object_or_404(Post, pk=self.kwargs.get('post_id'))
-        serializer.save(author=self.request.user, post=post)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        serializer.save(author=self.request.user, post=self.get_post())
 
 
-class FollowViewSet(viewsets.ModelViewSet):
+class FollowViewSet(
+    mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet
+):
     """Вьюсет для модели Follow."""
 
-    queryset = Follow.objects.all()
     serializer_class = FollowSerializer
     permission_classes = [permissions.IsAuthenticated, ]
     filter_backends = (filters.SearchFilter,)
@@ -90,4 +68,3 @@ class FollowViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Создание и сохранение подписки в БД."""
         serializer.save(user=self.request.user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)

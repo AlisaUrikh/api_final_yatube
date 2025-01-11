@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 
+from api.constants import QUANTITY_OF_SYMBOLS
+
 User = get_user_model()
 
 
@@ -10,6 +12,10 @@ class Group(models.Model):
     title = models.CharField(max_length=200, verbose_name='Название группы')
     slug = models.SlugField(unique=True, verbose_name='Слаг')
     description = models.TextField(verbose_name='Описание группы')
+
+    class Meta:
+        verbose_name = 'Группа'
+        verbose_name_plural = 'Группы'
 
     def __str__(self):
         return self.title
@@ -35,8 +41,13 @@ class Post(models.Model):
                               related_name='posts',
                               verbose_name='Идентификатор группы')
 
+    class Meta:
+        verbose_name = 'Пост'
+        verbose_name_plural = 'Посты'
+        ordering = ['id',]
+
     def __str__(self):
-        return self.text
+        return self.text[QUANTITY_OF_SYMBOLS]
 
 
 class Comment(models.Model):
@@ -55,9 +66,13 @@ class Comment(models.Model):
                                    db_index=True,
                                    verbose_name='Дата добавления')
 
+    class Meta:
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
+
     def __str__(self):
         return (f'Комментарий {self.author} к "{self.post}": '
-                f'{self.text}')
+                f'{self.text[QUANTITY_OF_SYMBOLS]}')
 
 
 class Follow(models.Model):
@@ -66,9 +81,13 @@ class Follow(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name='follower',
                              verbose_name='Пользователь-подписчик')
-    following = models.ForeignKey(User, on_delete=models.CASCADE,
+    following = models.ForeignKey(User, on_delete=models.SET_NULL,
                                   related_name='following',
                                   verbose_name='Пользователь-подписка')
+
+    class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
 
     def __str__(self):
         return (f'Пользователь {self.user} '
