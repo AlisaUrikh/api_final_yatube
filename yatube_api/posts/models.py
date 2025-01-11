@@ -35,7 +35,7 @@ class Post(models.Model):
                               blank=True,
                               verbose_name='Изображение')
     group = models.ForeignKey(Group,
-                              on_delete=models.CASCADE,
+                              on_delete=models.SET_NULL,
                               null=True,
                               blank=True,
                               related_name='posts',
@@ -44,7 +44,7 @@ class Post(models.Model):
     class Meta:
         verbose_name = 'Пост'
         verbose_name_plural = 'Посты'
-        ordering = ['id', ]
+        ordering = ['pub_date', ]
 
     def __str__(self):
         return self.text[QUANTITY_OF_SYMBOLS]
@@ -86,6 +86,11 @@ class Follow(models.Model):
                                   verbose_name='Пользователь-подписка')
 
     class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=('user', 'following'),
+                name='unique_follow'
+            ),)
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
 
