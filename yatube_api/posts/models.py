@@ -44,7 +44,7 @@ class Post(models.Model):
     class Meta:
         verbose_name = 'Пост'
         verbose_name_plural = 'Посты'
-        ordering = ['id',]
+        ordering = ['id', ]
 
     def __str__(self):
         return self.text[QUANTITY_OF_SYMBOLS]
